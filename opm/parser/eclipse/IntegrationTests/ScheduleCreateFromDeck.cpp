@@ -369,3 +369,102 @@ BOOST_AUTO_TEST_CASE(WellTestWELSPECS_InvalidConfig_Throws) {
 
 }
 
+
+BOOST_AUTO_TEST_CASE( COMPDAT_checkCompletions ) {
+
+    ParserPtr parser(new Parser());
+    boost::filesystem::path scheduleFile("testdata/integration_tests/SCHEDULE/SCHEDULE_COMPDAT1");
+    DeckPtr deck =  parser->parseFile(scheduleFile.string());
+    Schedule schedule(deck);
+
+    {
+        CompletionSetConstPtr completions1 = schedule.getWell("W_1")->getCompletions(0);
+        BOOST_CHECK_EQUAL(15U, completions1->size());
+
+        CompletionConstPtr completion0 = completions1->get(0);
+        CompletionConstPtr completion2 = completions1->get(2);
+
+        BOOST_CHECK_EQUAL( 29 , completion0->getI() );
+        BOOST_CHECK_EQUAL( 36 , completion0->getJ() );
+        BOOST_CHECK_EQUAL( 0  , completion0->getK() );
+        BOOST_CHECK_EQUAL( OPEN  , completion0->getState() );
+        BOOST_CHECK_EQUAL(  3.8134259259259256e-12 , completion0->getCF() );
+
+        BOOST_CHECK_EQUAL( 29 , completion2->getI() );
+        BOOST_CHECK_EQUAL( 36 , completion2->getJ() );
+        BOOST_CHECK_EQUAL( 2  , completion2->getK() );
+        BOOST_CHECK_EQUAL( OPEN  , completion2->getState() );
+        BOOST_CHECK_EQUAL( 3.8134259259259256e-12  , completion2->getCF() );
+    }
+
+    {
+        CompletionSetConstPtr completions1 = schedule.getWell("W_2")->getCompletions(0);
+        BOOST_CHECK_EQUAL(5U, completions1->size());
+    }
+
+    {
+        CompletionSetConstPtr completions1 = schedule.getWell("W_3")->getCompletions(0);
+        BOOST_CHECK_EQUAL(5U, completions1->size());
+        CompletionConstPtr completion0 = completions1->get(0U);
+        CompletionConstPtr completion4 = completions1->get(4U);
+
+        BOOST_CHECK_EQUAL( 30     , completion0->getI() );
+        BOOST_CHECK_EQUAL( 17     , completion0->getJ() );
+        BOOST_CHECK_EQUAL( 0      , completion0->getK() );
+        BOOST_CHECK_EQUAL( OPEN   , completion0->getState() );
+        BOOST_CHECK_EQUAL( 3.1726851851851847e-12 , completion0->getCF() );
+
+        BOOST_CHECK_EQUAL( 30     , completion4->getI() );
+        BOOST_CHECK_EQUAL( 16     , completion4->getJ() );
+        BOOST_CHECK_EQUAL( 3      , completion4->getK() );
+        BOOST_CHECK_EQUAL( OPEN   , completion4->getState() );
+        BOOST_CHECK_EQUAL( 5.4722222222222212e-13 , completion4->getCF() );
+    }
+
+}
+
+
+BOOST_AUTO_TEST_CASE( COMPDAT_Check0AndDefaultedIJ_UsesWELSPECSHEADX ) {
+    ParserPtr parser(new Parser());
+    boost::filesystem::path scheduleFile("testdata/integration_tests/SCHEDULE/SCHEDULE_COMPDAT_DEFAULTED_IJ");
+    DeckPtr deck =  parser->parseFile(scheduleFile.string());
+
+    Schedule schedule(deck);
+    BOOST_CHECK_EQUAL( 0U, schedule.getWell("W_1")->getCompletions(0)->size());
+    BOOST_CHECK_EQUAL( 0U, schedule.getWell("W_2")->getCompletions(0)->size());
+    BOOST_CHECK_EQUAL( 2U, schedule.getWell("W_1")->getCompletions(1)->size());
+    BOOST_CHECK_EQUAL( 2U, schedule.getWell("W_2")->getCompletions(1)->size());
+
+    CompletionSetConstPtr W_1Completions = schedule.getWell("W_1")->getCompletions(1);
+    CompletionSetConstPtr W_2Completions = schedule.getWell("W_2")->getCompletions(1);
+
+
+    CompletionConstPtr completionW_1_0 = W_1Completions->get(0);
+    CompletionConstPtr completionW_1_1 = W_1Completions->get(1);
+
+    BOOST_CHECK_EQUAL( 20     , completionW_1_0->getI() );
+    BOOST_CHECK_EQUAL( 30     , completionW_1_0->getJ() );
+    BOOST_CHECK_EQUAL( 20     , completionW_1_1->getI() );
+    BOOST_CHECK_EQUAL( 30     , completionW_1_1->getJ() );
+
+    CompletionConstPtr completionW_2_0 = W_2Completions->get(0);
+    CompletionConstPtr completionW_2_1 = W_2Completions->get(1);
+
+    BOOST_CHECK_EQUAL( 30     , completionW_2_0->getI() );
+    BOOST_CHECK_EQUAL( 20     , completionW_2_0->getJ() );
+    BOOST_CHECK_EQUAL( 10     , completionW_2_1->getI() );
+    BOOST_CHECK_EQUAL( 16     , completionW_2_1->getJ() );
+}
+
+
+BOOST_AUTO_TEST_CASE( COMPDAT_Check0OrDefaultedKThrows_UsesWELSPECSHEADX ) {
+    ParserPtr parser(new Parser());
+    boost::filesystem::path scheduleFile("testdata/integration_tests/SCHEDULE/SCHEDULE_COMPDAT_DEFAULTED_K_THROWS");
+    DeckPtr deck =  parser->parseFile(scheduleFile.string());
+    BOOST_CHECK_THROW(new Schedule(deck), std::invalid_argument);
+}
+
+
+
+
+

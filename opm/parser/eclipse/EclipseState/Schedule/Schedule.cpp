@@ -260,7 +260,7 @@ namespace Opm {
     }
 
     void Schedule::handleCOMPDAT(DeckKeywordConstPtr keyword , size_t currentStep) {
-        std::map<std::string , std::vector< CompletionConstPtr> > completionMapList = Completion::completionsFromCOMPDATKeyword( keyword );
+        std::map<std::string , std::vector< CompletionConstPtr> > completionMapList = completionsFromCOMPDATKeyword( keyword );
         std::map<std::string , std::vector< CompletionConstPtr> >::iterator iter;
         
         for( iter= completionMapList.begin(); iter != completionMapList.end(); iter++) {
@@ -370,6 +370,93 @@ namespace Opm {
         well->setGroupName(timeStep , newGroup->name());
         newGroup->addWell(timeStep , well);
     }
+
+    /**
+       This will break up one record and return a pair: <name ,
+       [Completion1, Completion2, ... , CompletionN]>. The reason it
+       will return a list is that the 'K1 K2' structure is
+       disentangled, and each completion is returned separately.
+    */
+
+    std::pair<std::string , std::vector<CompletionConstPtr> > Schedule::completionsFromCOMPDATRecord( DeckRecordConstPtr compdatRecord ) {
+        std::vector<CompletionConstPtr> completions;
+        std::string well = compdatRecord->getItem("WELL")->getString(0);
+        WellConstPtr wellObject = getWell(well);
+
+        // We change from eclipse's 1 - n, to a 0 - n-1 solution
+        int I;
+        if (compdatRecord->getItem("I")->defaultApplied() || compdatRecord->getItem("I")->getInt(0) == 0) {
+            I = wellObject->getHeadI();
+        }
+        else {
+            I = compdatRecord->getItem("I")->getInt(0) - 1;
+        }
+
+        int J;
+        if (compdatRecord->getItem("J")->defaultApplied() || compdatRecord->getItem("J")->getInt(0) == 0) {
+            J = wellObject->getHeadJ();
+        }
+        else {
+            J = compdatRecord->getItem("J")->getInt(0) - 1;
+        }
+
+        if (compdatRecord->getItem("K1")->defaultApplied() || compdatRecord->getItem("K1")->getInt(0) == 0
+                || compdatRecord->getItem("K2")->defaultApplied() || compdatRecord->getItem("K2")->getInt(0) == 0) {
+            throw std::invalid_argument("K1 and K2 cannot be defaulted or set to zero");
+        }
+
+        int K1 = compdatRecord->getItem("K1")->getInt(0) - 1;
+        int K2 = compdatRecord->getItem("K2")->getInt(0) - 1;
+
+        {
+            DeckItemConstPtr CFItem = compdatRecord->getItem("CF");
+            if (CFItem->defaultApplied())
+                throw std::invalid_argument("The connection factor item can not be defaulted");
+        }
+        double CF = compdatRecord->getItem("CF")->getSIDouble(0);
+
+        double diameter = compdatRecord->getItem("DIAMETER")->getSIDouble(0);
+        double skinFactor = compdatRecord->getItem("SKIN")->getRawDouble(0);
+        CompletionStateEnum state = CompletionStateEnumFromString( compdatRecord->getItem("STATE")->getString(0) );
+
+        for (int k = K1; k <= K2; k++) {
+            CompletionConstPtr completion(new Completion(I , J , k , state , CF, diameter, skinFactor ));
+            completions.push_back( completion );
+        }
+
+        return std::pair<std::string , std::vector<CompletionConstPtr> >( well , completions );
+    }
+
+
+    /*
+      Will return a map:
+
+      {
+         "WELL1" : [ Completion1 , Completion2 , ... , CompletionN ],
+         "WELL2" : [ Completion1 , Completion2 , ... , CompletionN ],
+         ...
+      }
+    */
+    std::map<std::string , std::vector< CompletionConstPtr> > Schedule::completionsFromCOMPDATKeyword( DeckKeywordConstPtr compdatKeyword ) {
+        std::map<std::string , std::vector< CompletionConstPtr> > completionMapList;
+        for (size_t recordIndex = 0; recordIndex < compdatKeyword->size(); recordIndex++) {
+            std::pair<std::string , std::vector< CompletionConstPtr> > wellCompletionsPair = completionsFromCOMPDATRecord( compdatKeyword->getRecord( recordIndex ));
+            std::string well = wellCompletionsPair.first;
+            std::vector<CompletionConstPtr>& newCompletions = wellCompletionsPair.second;
+
+            if (completionMapList.find(well) == completionMapList.end())
+                 completionMapList[well] = std::vector<CompletionConstPtr>();
+
+            {
+                std::vector<CompletionConstPtr>& currentCompletions = completionMapList.find(well)->second;
+
+                for (size_t ic = 0; ic < newCompletions.size(); ic++)
+                    currentCompletions.push_back( newCompletions[ic] );
+            }
+        }
+        return completionMapList;
+    }
+
 
 
 }

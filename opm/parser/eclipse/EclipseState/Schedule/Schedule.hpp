@@ -80,6 +80,8 @@ namespace Opm
         void handleDATES(DeckKeywordConstPtr keyword);
         void handleTSTEP(DeckKeywordConstPtr keyword);
         void handleGRUPTREE(DeckKeywordConstPtr keyword, size_t currentStep);
+        std::pair<std::string , std::vector<CompletionConstPtr> > completionsFromCOMPDATRecord( DeckRecordConstPtr compdatRecord );
+        std::map<std::string , std::vector< CompletionConstPtr> > completionsFromCOMPDATKeyword( DeckKeywordConstPtr compdatKeyword );
 
     };
     typedef std::shared_ptr<Schedule> SchedulePtr;
