@@ -1,16 +1,21 @@
 FROM centos:latest
 MAINTAINER Kristian Flikka <kristian@flikka.net>
-RUN yum -y install epel-release wget
-RUN yum -y install git cmake boost-devel 
-RUN yum -y install cppcheck valgrind
-RUN yum -y group install "Development Tools"
 
-RUN yum -y install tcl-devel tk-devel
+ENV http_proxy=www-proxy.statoil.no:80 
+ENV https_proxy=www-proxy.statoil.no:80
+ENV HTTP_PROXY=www-proxy.statoil.no:80
+ENV HTTPS_PROXY=www-proxy.statoil.no:80
+
+RUN yum -y install epel-release wget git cmake boost-devel cppcheck valgrind tcl-devel tk-devel 
+RUN yum -y groupinstall "Development Tools" --disablerepo=epel
 RUN wget https://bitbucket.org/verateam/vera/downloads/vera%2B%2B-1.3.0.tar.gz
 RUN tar xvf vera++-1.3.0.tar.gz && \
  cd vera++-1.3.0 && \
  cmake . -DVERA_LUA=OFF -DVERA_PYTHON=OFF && \
  make install -j 4
+
+RUN wget http://repo1.maven.org/maven2/org/codehaus/sonar/runner/sonar-runner-dist/2.4/sonar-runner-dist-2.4.zip && \
+    unzip sonar-runner-dist-2.4.zip
 
 COPY build.sh /
 
